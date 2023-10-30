@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/restic/restic/internal/backend"
 	"github.com/restic/restic/internal/debug"
 	"github.com/restic/restic/internal/errors"
 	"github.com/restic/restic/internal/filter"
@@ -126,7 +125,6 @@ func (s *statefulOutput) PrintPatternJSON(path string, node *restic.Node) {
 
 		// Make the following attributes disappear
 		Name               byte `json:"name,omitempty"`
-		Inode              byte `json:"inode,omitempty"`
 		ExtendedAttributes byte `json:"extended_attributes,omitempty"`
 		Device             byte `json:"device,omitempty"`
 		Content            byte `json:"content,omitempty"`
@@ -585,7 +583,7 @@ func runFind(ctx context.Context, opts FindOptions, gopts GlobalOptions, args []
 		}
 	}
 
-	snapshotLister, err := backend.MemorizeList(ctx, repo.Backend(), restic.SnapshotFile)
+	snapshotLister, err := restic.MemorizeList(ctx, repo, restic.SnapshotFile)
 	if err != nil {
 		return err
 	}

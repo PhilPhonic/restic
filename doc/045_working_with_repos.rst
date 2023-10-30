@@ -136,6 +136,8 @@ or the environment variable ``$RESTIC_FROM_KEY_HINT``.
     repository. You can avoid this limitation by using the rclone backend
     along with remotes which are configured in rclone.
 
+.. note:: If `copy` is aborted, `copy` will resume the interrupted copying when it is run again. It's possible that up to 10 minutes of progress can be lost because the repository index is only updated from time to time.
+
 .. _copy-filtering-snapshots:
 
 Filtering snapshots to copy
@@ -335,7 +337,7 @@ over 5 separate invocations:
     $ restic -r /srv/restic-repo check --read-data-subset=4/5
     $ restic -r /srv/restic-repo check --read-data-subset=5/5
 
-Use ``--read-data-subset=x%`` to check a randomly choosen subset of the
+Use ``--read-data-subset=x%`` to check a randomly chosen subset of the
 repository pack files. It takes one parameter, ``x``, the percentage of
 pack files to check as an integer or floating point number. This will not
 guarantee to cover all available pack files after sufficient runs, but it is
