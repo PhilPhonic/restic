@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/restic/restic/internal/cache"
+	"github.com/restic/restic/internal/backend/cache"
 	"github.com/restic/restic/internal/errors"
 	"github.com/restic/restic/internal/fs"
 	"github.com/restic/restic/internal/ui"
@@ -28,7 +28,7 @@ EXIT STATUS
 Exit status is 0 if the command was successful, and non-zero if there was any error.
 `,
 	DisableAutoGenTag: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, args []string) error {
 		return runCache(cacheOptions, globalOptions, args)
 	},
 }

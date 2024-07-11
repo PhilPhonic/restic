@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/restic/restic/internal/backend"
 	"github.com/restic/restic/internal/debug"
 	"github.com/restic/restic/internal/errors"
 	"github.com/restic/restic/internal/repository"
@@ -86,8 +85,7 @@ func changeTags(ctx context.Context, repo *repository.Repository, sn *restic.Sna
 		debug.Log("new snapshot saved as %v", id)
 
 		// Remove the old snapshot.
-		h := backend.Handle{Type: restic.SnapshotFile, Name: sn.ID().String()}
-		if err = repo.Backend().Remove(ctx, h); err != nil {
+		if err = repo.RemoveUnpacked(ctx, restic.SnapshotFile, *sn.ID()); err != nil {
 			return false, err
 		}
 
@@ -104,20 +102,12 @@ func runTag(ctx context.Context, opts TagOptions, gopts GlobalOptions, args []st
 		return errors.Fatal("--set and --add/--remove cannot be given at the same time")
 	}
 
-	repo, err := OpenRepository(ctx, gopts)
+	Verbosef("create exclusive lock for repository\n")
+	ctx, repo, unlock, err := openWithExclusiveLock(ctx, gopts, false)
 	if err != nil {
-		return err
+		return nil
 	}
-
-	if !gopts.NoLock {
-		Verbosef("create exclusive lock for repository\n")
-		var lock *restic.Lock
-		lock, ctx, err = lockRepoExclusive(ctx, repo, gopts.RetryLock, gopts.JSON)
-		defer unlockRepo(lock)
-		if err != nil {
-			return err
-		}
-	}
+	defer unlock()
 
 	changeCnt := 0
 	for sn := range FindFilteredSnapshots(ctx, repo, repo, &opts.SnapshotFilter, args) {
@@ -129,6 +119,9 @@ func runTag(ctx context.Context, opts TagOptions, gopts GlobalOptions, args []st
 		if changed {
 			changeCnt++
 		}
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 	if changeCnt == 0 {
 		Verbosef("no snapshots were modified\n")

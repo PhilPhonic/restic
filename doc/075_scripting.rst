@@ -75,9 +75,6 @@ Several commands, in particular long running ones or those that generate a large
 use a format also known as JSON lines. It consists of a stream of new-line separated JSON
 messages. You can determine the nature of the message using the ``message_type`` field.
 
-As an exception, the ``ls`` command uses the field ``struct_type`` instead.
-
-
 backup
 ------
 
@@ -166,7 +163,9 @@ Summary is the last output line in a successful backup.
 +---------------------------+---------------------------------------------------------+
 | ``tree_blobs``            | Number of tree blobs                                    |
 +---------------------------+---------------------------------------------------------+
-| ``data_added``            | Amount of data added, in bytes                          |
+| ``data_added``            | Amount of (uncompressed) data added, in bytes           |
++---------------------------+---------------------------------------------------------+
+| ``data_added_packed``     | Amount of data added (after compression), in bytes      |
 +---------------------------+---------------------------------------------------------+
 | ``total_files_processed`` | Total number of files processed                         |
 +---------------------------+---------------------------------------------------------+
@@ -174,7 +173,8 @@ Summary is the last output line in a successful backup.
 +---------------------------+---------------------------------------------------------+
 | ``total_duration``        | Total time it took for the operation to complete        |
 +---------------------------+---------------------------------------------------------+
-| ``snapshot_id``           | ID of the new snapshot                                  |
+| ``snapshot_id``           | ID of the new snapshot. Field is omitted if snapshot    |
+|                           | creation was skipped                                    |
 +---------------------------+---------------------------------------------------------+
 
 
@@ -201,7 +201,8 @@ change
 +------------------+--------------------------------------------------------------+
 | ``modifier``     | Type of change, a concatenation of the following characters: |
 |                  | "+" = added, "-" = removed, "T" = entry type changed,        |
-|                  | "M" = file content changed, "U" = metadata changed           |
+|                  | "M" = file content changed, "U" = metadata changed,          |
+|                  | "?" = bitrot detected                                        |
 +------------------+--------------------------------------------------------------+
 
 statistics
@@ -367,13 +368,13 @@ Snapshot object
 
 Reason object
 
-+----------------+---------------------------------------------------------+
-| ``snapshot``   | Snapshot object, without ``id`` and ``short_id`` fields |
-+----------------+---------------------------------------------------------+
-| ``matches``    | Array containing descriptions of the matching criteria  |
-+----------------+---------------------------------------------------------+
-| ``counters``   | Object containing counters used by the policies         |
-+----------------+---------------------------------------------------------+
++----------------+-----------------------------------------------------------+
+| ``snapshot``   | Snapshot object, including ``id`` and ``short_id`` fields |
++----------------+-----------------------------------------------------------+
+| ``matches``    | Array containing descriptions of the matching criteria    |
++----------------+-----------------------------------------------------------+
+| ``counters``   | Object containing counters used by the policies           |
++----------------+-----------------------------------------------------------+
 
 
 init
@@ -408,6 +409,8 @@ The ``key list`` command returns an array of objects with the following structur
 +--------------+------------------------------------+
 
 
+.. _ls json:
+
 ls
 --
 
@@ -417,63 +420,67 @@ As an exception, the ``struct_type`` field is used to determine the message type
 snapshot
 ^^^^^^^^
 
-+----------------+--------------------------------------------------+
-| ``struct_type``| Always "snapshot"                                |
-+----------------+--------------------------------------------------+
-| ``time``       | Timestamp of when the backup was started         |
-+----------------+--------------------------------------------------+
-| ``parent``     | ID of the parent snapshot                        |
-+----------------+--------------------------------------------------+
-| ``tree``       | ID of the root tree blob                         |
-+----------------+--------------------------------------------------+
-| ``paths``      | List of paths included in the backup             |
-+----------------+--------------------------------------------------+
-| ``hostname``   | Hostname of the backed up machine                |
-+----------------+--------------------------------------------------+
-| ``username``   | Username the backup command was run as           |
-+----------------+--------------------------------------------------+
-| ``uid``        | ID of owner                                      |
-+----------------+--------------------------------------------------+
-| ``gid``        | ID of group                                      |
-+----------------+--------------------------------------------------+
-| ``excludes``   | List of paths and globs excluded from the backup |
-+----------------+--------------------------------------------------+
-| ``tags``       | List of tags for the snapshot in question        |
-+----------------+--------------------------------------------------+
-| ``id``         | Snapshot ID                                      |
-+----------------+--------------------------------------------------+
-| ``short_id``   | Snapshot ID, short form                          |
-+----------------+--------------------------------------------------+
++------------------+--------------------------------------------------+
+| ``message_type`` | Always "snapshot"                                |
++------------------+--------------------------------------------------+
+| ``struct_type``  | Always "snapshot" (deprecated)                   |
++------------------+--------------------------------------------------+
+| ``time``         | Timestamp of when the backup was started         |
++------------------+--------------------------------------------------+
+| ``parent``       | ID of the parent snapshot                        |
++------------------+--------------------------------------------------+
+| ``tree``         | ID of the root tree blob                         |
++------------------+--------------------------------------------------+
+| ``paths``        | List of paths included in the backup             |
++------------------+--------------------------------------------------+
+| ``hostname``     | Hostname of the backed up machine                |
++------------------+--------------------------------------------------+
+| ``username``     | Username the backup command was run as           |
++------------------+--------------------------------------------------+
+| ``uid``          | ID of owner                                      |
++------------------+--------------------------------------------------+
+| ``gid``          | ID of group                                      |
++------------------+--------------------------------------------------+
+| ``excludes``     | List of paths and globs excluded from the backup |
++------------------+--------------------------------------------------+
+| ``tags``         | List of tags for the snapshot in question        |
++------------------+--------------------------------------------------+
+| ``id``           | Snapshot ID                                      |
++------------------+--------------------------------------------------+
+| ``short_id``     | Snapshot ID, short form                          |
++------------------+--------------------------------------------------+
 
 
 node
 ^^^^
 
-+-----------------+--------------------------+
-| ``struct_type`` | Always "node"            |
-+-----------------+--------------------------+
-| ``name``        | Node name                |
-+-----------------+--------------------------+
-| ``type``        | Node type                |
-+-----------------+--------------------------+
-| ``path``        | Node path                |
-+-----------------+--------------------------+
-| ``uid``         | UID of node              |
-+-----------------+--------------------------+
-| ``gid``         | GID of node              |
-+-----------------+--------------------------+
-| ``size``        | Size in bytes            |
-+-----------------+--------------------------+
-| ``mode``        | Node mode                |
-+-----------------+--------------------------+
-| ``atime``       | Node access time         |
-+-----------------+--------------------------+
-| ``mtime``       | Node modification time   |
-+-----------------+--------------------------+
-| ``ctime``       | Node creation time       |
-+-----------------+--------------------------+
-| ``inode``       | Inode number of node     |
-+-----------------+--------------------------+
++------------------+----------------------------+
+| ``message_type`` | Always "node"              |
++------------------+----------------------------+
+| ``struct_type``  | Always "node" (deprecated) |
++------------------+----------------------------+
+| ``name``         | Node name                  |
++------------------+----------------------------+
+| ``type``         | Node type                  |
++------------------+----------------------------+
+| ``path``         | Node path                  |
++------------------+----------------------------+
+| ``uid``          | UID of node                |
++------------------+----------------------------+
+| ``gid``          | GID of node                |
++------------------+----------------------------+
+| ``size``         | Size in bytes              |
++------------------+----------------------------+
+| ``mode``         | Node mode                  |
++------------------+----------------------------+
+| ``atime``        | Node access time           |
++------------------+----------------------------+
+| ``mtime``        | Node modification time     |
++------------------+----------------------------+
+| ``ctime``        | Node creation time         |
++------------------+----------------------------+
+| ``inode``        | Inode number of node       |
++------------------+----------------------------+
 
 
 restore
@@ -495,11 +502,30 @@ Status
 +----------------------+------------------------------------------------------------+
 |``files_restored``    | Files restored                                             |
 +----------------------+------------------------------------------------------------+
+|``files_skipped``     | Files skipped due to overwrite setting                     |
++----------------------+------------------------------------------------------------+
 |``total_bytes``       | Total number of bytes in restore set                       |
 +----------------------+------------------------------------------------------------+
 |``bytes_restored``    | Number of bytes restored                                   |
 +----------------------+------------------------------------------------------------+
+|``bytes_skipped``     | Total size of skipped files                                |
++----------------------+------------------------------------------------------------+
 
+Verbose Status
+^^^^^^^^^^^^^^
+
+Verbose status provides details about the progress, including details about restored files.
+Only printed if `--verbose=2` is specified.
+
++----------------------+-----------------------------------------------------------+
+| ``message_type``     | Always "verbose_status"                                   |
++----------------------+-----------------------------------------------------------+
+| ``action``           | Either "restored", "updated", "unchanged" or "deleted"    |
++----------------------+-----------------------------------------------------------+
+| ``item``             | The item in question                                      |
++----------------------+-----------------------------------------------------------+
+| ``size``             | Size of the item in bytes                                 |
++----------------------+-----------------------------------------------------------+
 
 Summary
 ^^^^^^^
@@ -513,9 +539,13 @@ Summary
 +----------------------+------------------------------------------------------------+
 |``files_restored``    | Files restored                                             |
 +----------------------+------------------------------------------------------------+
+|``files_skipped``     | Files skipped due to overwrite setting                     |
++----------------------+------------------------------------------------------------+
 |``total_bytes``       | Total number of bytes in restore set                       |
 +----------------------+------------------------------------------------------------+
 |``bytes_restored``    | Number of bytes restored                                   |
++----------------------+------------------------------------------------------------+
+|``bytes_skipped``     | Total size of skipped files                                |
 +----------------------+------------------------------------------------------------+
 
 
@@ -547,16 +577,53 @@ The snapshots command returns a single JSON object, an array with objects of the
 +---------------------+--------------------------------------------------+
 | ``program_version`` | restic version used to create snapshot           |
 +---------------------+--------------------------------------------------+
+| ``summary``         | Snapshot statistics, see "Summary object"        |
++---------------------+--------------------------------------------------+
 | ``id``              | Snapshot ID                                      |
 +---------------------+--------------------------------------------------+
 | ``short_id``        | Snapshot ID, short form                          |
 +---------------------+--------------------------------------------------+
 
+Summary object
+
+The contained statistics reflect the information at the point in time when the snapshot
+was created.
+
++---------------------------+---------------------------------------------------------+
+| ``backup_start``          | Time at which the backup was started                    |
++---------------------------+---------------------------------------------------------+
+| ``backup_end``            | Time at which the backup was completed                  |
++---------------------------+---------------------------------------------------------+
+| ``files_new``             | Number of new files                                     |
++---------------------------+---------------------------------------------------------+
+| ``files_changed``         | Number of files that changed                            |
++---------------------------+---------------------------------------------------------+
+| ``files_unmodified``      | Number of files that did not change                     |
++---------------------------+---------------------------------------------------------+
+| ``dirs_new``              | Number of new directories                               |
++---------------------------+---------------------------------------------------------+
+| ``dirs_changed``          | Number of directories that changed                      |
++---------------------------+---------------------------------------------------------+
+| ``dirs_unmodified``       | Number of directories that did not change               |
++---------------------------+---------------------------------------------------------+
+| ``data_blobs``            | Number of data blobs                                    |
++---------------------------+---------------------------------------------------------+
+| ``tree_blobs``            | Number of tree blobs                                    |
++---------------------------+---------------------------------------------------------+
+| ``data_added``            | Amount of (uncompressed) data added, in bytes           |
++---------------------------+---------------------------------------------------------+
+| ``data_added_packed``     | Amount of data added (after compression), in bytes      |
++---------------------------+---------------------------------------------------------+
+| ``total_files_processed`` | Total number of files processed                         |
++---------------------------+---------------------------------------------------------+
+| ``total_bytes_processed`` | Total number of bytes processed                         |
++---------------------------+---------------------------------------------------------+
+
 
 stats
 -----
 
-The snapshots command returns a single JSON object.
+The stats command returns a single JSON object.
 
 +------------------------------+-----------------------------------------------------+
 | ``total_size``               | Repository size in bytes                            |
