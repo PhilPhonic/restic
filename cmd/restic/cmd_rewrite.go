@@ -38,7 +38,10 @@ use the "prune" command.
 EXIT STATUS
 ===========
 
-Exit status is 0 if the command was successful, and non-zero if there was any error.
+Exit status is 0 if the command was successful.
+Exit status is 1 if there was any error.
+Exit status is 10 if the repository does not exist.
+Exit status is 11 if the repository is already locked.
 `,
 	DisableAutoGenTag: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -131,20 +134,29 @@ func rewriteSnapshot(ctx context.Context, repo *repository.Repository, sn *resti
 			return true
 		}
 
-		rewriter := walker.NewTreeRewriter(walker.RewriteOpts{
-			RewriteNode: func(node *restic.Node, path string) *restic.Node {
-				if selectByName(path) {
-					return node
-				}
-				Verbosef(fmt.Sprintf("excluding %s\n", path))
-				return nil
-			},
-			DisableNodeCache: true,
-		})
+		rewriteNode := func(node *restic.Node, path string) *restic.Node {
+			if selectByName(path) {
+				return node
+			}
+			Verbosef(fmt.Sprintf("excluding %s\n", path))
+			return nil
+		}
+
+		rewriter, querySize := walker.NewSnapshotSizeRewriter(rewriteNode)
 
 		filter = func(ctx context.Context, sn *restic.Snapshot) (restic.ID, error) {
-			return rewriter.RewriteTree(ctx, repo, "/", *sn.Tree)
+			id, err := rewriter.RewriteTree(ctx, repo, "/", *sn.Tree)
+			if err != nil {
+				return restic.ID{}, err
+			}
+			ss := querySize()
+			if sn.Summary != nil {
+				sn.Summary.TotalFilesProcessed = ss.FileCount
+				sn.Summary.TotalBytesProcessed = ss.FileSize
+			}
+			return id, err
 		}
+
 	} else {
 		filter = func(_ context.Context, sn *restic.Snapshot) (restic.ID, error) {
 			return *sn.Tree, nil
